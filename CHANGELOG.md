@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **GLES Linux surface context lifetime** — a Surface that had to create its own
+  EGL context (Wayland, or when the detected window kind did not match the real
+  window) owned that context and freed it in `Surface.Destroy`. The Adapter,
+  Device and Queue share the same `*AdapterContext` and outlive the Surface, so
+  closing the window freed the EGL context first and the later `Device.Destroy`
+  locked a nil EGL context and dereferenced nil `*gl.Context` in
+  `DeleteVertexArrays`, panicking on shutdown. `CreateSurface` now adopts the
+  context on the Instance, which is released after the Device and Surface.
+
 ## [0.34.5] - 2026-09-07
 
 ### Fixed
