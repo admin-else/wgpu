@@ -83,6 +83,9 @@ func NewContext(config ContextConfig) (*Context, error) {
 		closeOwner()
 		return nil, fmt.Errorf("eglInitialize failed: error 0x%x", GetError())
 	}
+	// The display may be shared with other Contexts; hold a reference so this
+	// Context's Destroy only terminates it once the last reference is gone.
+	retainDisplay(display)
 
 	// Bind OpenGL or OpenGL ES API
 	api := OpenGLAPI
@@ -90,7 +93,7 @@ func NewContext(config ContextConfig) (*Context, error) {
 		api = OpenGLESAPI
 	}
 	if BindAPI(api) == False {
-		Terminate(display)
+		releaseDisplay(display)
 		closeOwner()
 		return nil, fmt.Errorf("eglBindAPI failed: error 0x%x", GetError())
 	}
@@ -98,7 +101,7 @@ func NewContext(config ContextConfig) (*Context, error) {
 	// Choose EGL frame buffer configuration
 	eglConfig, err := chooseEGLConfig(display, config)
 	if err != nil {
-		Terminate(display)
+		releaseDisplay(display)
 		closeOwner()
 		return nil, fmt.Errorf("failed to choose EGL config: %w", err)
 	}
@@ -106,7 +109,7 @@ func NewContext(config ContextConfig) (*Context, error) {
 	// Create EGL context
 	eglContext := createEGLContext(display, eglConfig, config)
 	if eglContext == NoContext {
-		Terminate(display)
+		releaseDisplay(display)
 		closeOwner()
 		return nil, fmt.Errorf("eglCreateContext failed: error 0x%x", GetError())
 	}
@@ -128,7 +131,7 @@ func NewContext(config ContextConfig) (*Context, error) {
 		pbuffer = createPbufferSurface(display, eglConfig)
 		if pbuffer == NoSurface {
 			DestroyContext(display, eglContext)
-			Terminate(display)
+			releaseDisplay(display)
 			closeOwner()
 			return nil, fmt.Errorf("eglCreatePbufferSurface failed and no surfaceless support: error 0x%x", GetError())
 		}
@@ -297,7 +300,7 @@ func (c *Context) Destroy() {
 		c.pbuffer = NoSurface
 	}
 	if c.display != NoDisplay {
-		Terminate(c.display)
+		releaseDisplay(c.display)
 		c.display = NoDisplay
 	}
 	// Close native display connection AFTER eglTerminate.
