@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **GLES Linux surface context lifetime** — a Surface that had to create its own
+- **GLES Linux surface context lifetime** (#362, @admin-else) — a Surface that had to create its own
   EGL context (Wayland, or when the detected window kind did not match the real
   window) owned that context and freed it in `Surface.Destroy`. The Adapter,
   Device and Queue share the same `*AdapterContext` and outlive the Surface, so
